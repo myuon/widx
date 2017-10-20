@@ -1,7 +1,8 @@
 {-|
 Interfaces and classes for widget
 -}
-signature Renderer where
+{-# LANGUAGE KindSignatures #-}
+signature Graphics.UI.Widget.Renderer where
 
 import Control.Monad.IO.Class
 
