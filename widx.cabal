@@ -36,6 +36,7 @@ library
     , colors
   exposed-modules:
       Data.Widget.Stylesheet
+      Graphics.UI.Widget
       Graphics.UI.Widget.Class
       Graphics.UI.Widget.Core
       Graphics.UI.Widget.Internal.Freeze

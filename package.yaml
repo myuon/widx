@@ -44,6 +44,6 @@ default-extensions:
 - ViewPatterns
 
 library:
-  source-dirs:      src
+  source-dirs: src
   other-modules: Paths_widx
 
