@@ -2,7 +2,7 @@
 Builder by TH
 -}
 {-# LANGUAGE TemplateHaskell #-}
-module Graphics.UI.Widget.TH
+module Graphics.UI.Widget.Internal.TH
   ( makeOp
   ) where
 
