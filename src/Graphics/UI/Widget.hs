@@ -12,8 +12,9 @@ module Graphics.UI.Widget
   ) where
 
 import Graphics.UI.Widget.Core
-import Graphics.UI.Widget.Renderer
 
 import Graphics.UI.Widget.Layer
 import Graphics.UI.Widget.Selector
+
+import Graphics.UI.Widget.Renderer
 

@@ -36,8 +36,9 @@ module Graphics.UI.Widget.Core
   -- * Re-exports
   , type (++)
   , type (∈)
+  , makeOp
   , module Graphics.UI.Widget.Internal.Widget
-  , module Graphics.UI.Widget.Internal.TH
+--  , module Graphics.UI.Widget.Internal.TH
   , module Graphics.UI.Widget.Internal.Named
   , module Graphics.UI.Widget.Internal.Freeze
   ) where
