@@ -1,0 +1,11 @@
+flags: {}
+extra-package-dbs: []
+build:
+  haddock-arguments:
+    haddock-args:
+    - --odir=./docs
+packages:
+- .
+extra-deps:
+- colors-0.3.0.2
+resolver: lts-9.9
