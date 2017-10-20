@@ -16,18 +16,9 @@ module Graphics.UI.Widget.Core
   , op'isFreeze
 
   -- * Config
-  , WConfig
-  , Conf(..)
-  , ViewWConfig(..)
+  , Config
 
-  , giveWid
-  , getLocation
-  , mkCfg
-  , viewWConfig
-  , wconf
-  , conf
-
-  -- * Common Operators
+  -- * Common operators
   , op'render
   , op'renderAlpha
   , op'run
@@ -35,6 +26,13 @@ module Graphics.UI.Widget.Core
   , op'handleEvent
   , op'switch
 
+  -- * Operator types
+  , Op'Render(..)
+  , Op'Run(..)
+  , Op'Reset(..)
+  , Op'HandleEvent(..)
+  , Op'Switch(..)
+  
   -- * Re-exports
   , type (++)
   , type (∈)
@@ -100,58 +98,5 @@ runSwitchM w op k = runFreezeT (w `call` op) >>= k
 op'isFreeze :: Widget xs -> Getter (Widget xs) (FreezeT (Widget xs) Identity a) -> Bool 
 op'isFreeze w op = runSwitch w op isFreeze
 
-type WConfigR a b = Record
-  [ "wix" >: WidgetId
-  , "required" >: a
-  , "optional" >: b
-  ]
+type family Config (k :: Symbol) (m :: * -> *) :: *
 
--- | @WConfig k@ is a record of widget id, required parameter and optional parameter
-type WConfig k = WConfigR (Record (Required k)) (Record (Optional k))
-
--- | @k@ has default value of optional parameters
-class Conf k where
-  type Required k :: [Assoc Symbol *]
-  type Optional k :: [Assoc Symbol *]
-
-  -- | default values
-  def :: Record (Optional k)
-
--- | combinator for a widget with wix (widget-id)
---
--- @
---   conf wix req opt
---   = #wix @= wix
---   <: #required @= req
---   <: #optional @= opt
---   <: emptyRecord
--- @
-conf :: WidgetId -> Record (Required k) -> Record (Optional k) -> WConfig k
-conf wix req opt = #wix @= wix <: #required @= req <: #optional @= opt <: emptyRecord
-
--- | Give a widget-id using Proxy
-giveWid :: (KnownSymbol k) => Proxy k -> WConfig k -> WConfig k
-giveWid w wcfg = wcfg & #wix %~ (</> WId (symbolVal w))
-
--- | Find the location of the widget corresponding to given widget-id
-getLocation :: (Given StyleSheet) => WidgetId -> SDL.V2 Int
-getLocation wix = given ^. wlocation wix
-
--- | Build Config data
-mkCfg :: WidgetId -> a -> b -> WConfigR a b
-mkCfg wid req opt
-  = #wix @= wid
-  <: #required @= req
-  <: #optional @= opt
-  <: emptyRecord
-
--- | Unpack a value of WConfig
-data ViewWConfig a b = ViewWConfig WidgetId a b
-
--- | Unpacking function
-viewWConfig :: WConfigR a b -> ViewWConfig a b
-viewWConfig cfg = ViewWConfig (cfg ^. #wix) (cfg ^. #required) (cfg ^. #optional)
-
--- | > wconf p = viewWConfig . giveWid p
-wconf :: (KnownSymbol k) => Proxy k -> WConfig k -> ViewWConfig (Record (Required k)) (Record (Optional k))
-wconf p = viewWConfig . giveWid p
