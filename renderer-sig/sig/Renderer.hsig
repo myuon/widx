@@ -1,0 +1,22 @@
+{-|
+Interfaces and classes for widget
+-}
+signature Renderer where
+
+import Control.Monad.IO.Class
+
+data RenderM :: * -> *
+
+instance Functor RenderM
+instance Monad RenderM
+instance MonadIO RenderM
+
+data Texture :: *
+
+loadTexture :: MonadIO m => FilePath -> m Texture
+
+-- | Render objects
+class Renderer m where
+  picture :: Texture -> m ()
+  alpha :: Double -> m a -> m a
+
