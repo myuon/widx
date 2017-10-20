@@ -1,7 +1,8 @@
 {-|
 Builder by TH
 -}
-module Graphics.UI.Widget.Internal.TH
+{-# LANGUAGE TemplateHaskell #-}
+module Graphics.UI.Widget.TH
   ( makeOp
   ) where
 
@@ -9,7 +10,6 @@ import Control.Lens
 import Control.Monad
 import Data.Char
 import Language.Haskell.TH
-import Graphics.UI.Widget.Internal.Widget
 
 data Operator
   = Operator
@@ -53,8 +53,8 @@ declareOpDatatype opr = do
 
 declareOpGetter :: Operator -> DecsQ
 declareOpGetter opr = case opr^.branch of
-  ConT c | c == ''Self -> declareOpSelfGetter opr
-  ConT c | c == ''Value -> declareOpValueGetter opr
+  ConT c | c == mkName "Self" -> declareOpSelfGetter opr
+  ConT c | c == mkName "Value" -> declareOpValueGetter opr
   _ -> declareOpOtherGetter opr
 
   where

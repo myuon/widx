@@ -4,6 +4,7 @@ Interfaces and classes for widget
 {-# LANGUAGE KindSignatures #-}
 signature Graphics.UI.Widget.Renderer where
 
+import Prelude (Functor, Monad, FilePath, Double)
 import Control.Monad.IO.Class
 
 data RenderM :: * -> *
