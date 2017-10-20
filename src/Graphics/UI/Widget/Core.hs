@@ -42,7 +42,6 @@ module Graphics.UI.Widget.Core
   , module Graphics.UI.Widget.Internal.Freeze
   ) where
 
-import qualified SDL as SDL
 import Control.Lens
 import qualified Data.Map as M
 import Data.Functor.Sum
@@ -51,14 +50,14 @@ import Data.Extensible
 import Data.Proxy
 import GHC.TypeLits
 import Data.Widget.Stylesheet
-import Graphics.UI.Widget.Class
+import Graphics.UI.Widget.Renderer
 import Graphics.UI.Widget.Internal.Widget
 import Graphics.UI.Widget.Internal.TH
 import Graphics.UI.Widget.Internal.Named
 import Graphics.UI.Widget.Internal.Freeze
 
 makeOp "Run" [t| _ Self RenderM () |]
-makeOp "HandleEvent" [t| M.Map SDL.Scancode Int -> _ Self RenderM () |]
+makeOp "HandleEvent" [t| M.Map Keycode Int -> _ Self RenderM () |]
 makeOp "Switch" [t| _ FreezeT Identity () |]
 
 data Op'Render br m r where
@@ -98,5 +97,5 @@ runSwitchM w op k = runFreezeT (w `call` op) >>= k
 op'isFreeze :: Widget xs -> Getter (Widget xs) (FreezeT (Widget xs) Identity a) -> Bool 
 op'isFreeze w op = runSwitch w op isFreeze
 
-type family Config (k :: Symbol) (m :: * -> *) :: *
+type family Config (k :: Symbol) :: *
 

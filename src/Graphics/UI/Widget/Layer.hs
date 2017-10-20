@@ -12,8 +12,10 @@ module Graphics.UI.Widget.Layer
   , Op'Delay
 
   -- * Operator
-  , op'renderLayer
   , op'getCounter
+  , op'renderAt
+
+  , Op'RenderAt(..)
   ) where
 
 import qualified Data.Map as M
@@ -24,26 +26,29 @@ import Data.Reflection
 import Data.Extensible
 import Linear.V2
 import Data.Widget.Stylesheet
-import Graphics.UI.Widget.Class
+import Graphics.UI.Widget.Renderer
 import Graphics.UI.Widget.Core
 
 -- | Layer datatype
-data Layer m
+data Layer
   = Layer
   { _size :: V2 Int
-  , _texture :: Texture m  -- ^ Texture type
+  , _texture :: Texture  -- ^ Texture type
   }
 
 makeLenses ''Layer
 
+makeOp "RenderAt" [t| V2 Int -> Double -> _ Value RenderM () |]
+
 -- | Method of 'wLayer'
 type Op'Layer =
-  '[ Op'Render
+  [ Op'Render
+  , Op'RenderAt
   ]
 
-type instance Config "layer" m
+type instance Config "layer"
   = Record
-  [ "windowTexture" >: Texture m
+  [ "windowTexture" >: Texture
   , "size" >: V2 Int
   ]
 
@@ -53,20 +58,22 @@ type instance Config "layer" m
 --
 -- * 'op'render' Render operator
 --
-wLayer :: (Given StyleSheet, Renderer m) => Config "layer" m -> m (NamedWidget Op'Layer)
+wLayer :: Given StyleSheet => Config "layer" -> RenderM (NamedWidget Op'Layer)
 wLayer cfg = wNamed mempty . go <$> new where
   new = return $ Layer (cfg ^. #size) (cfg ^. #windowTexture)
 
-  go :: Renderer m => Layer m -> Widget Op'Layer
+  go :: Layer -> Widget Op'Layer
   go layer = Widget $
-    (\(Op'Render a) -> finishM $ RenderM $ alpha a $ picture (layer^.texture))
+    (\(Op'Render a) -> finishM $ alpha a $ picture (layer^.texture))
+    @> (\(Op'RenderAt v a) -> finishM $ alpha a $ translate v $ picture (layer^.texture))
     @> emptyUnion
 
 -- | Layer widget and its texture will be loaded using given filepath
-wLayerFilePath :: Given StyleSheet => FilePath -> Config "layer" m -> m (NamedWidget Op'Layer)
-wLayerFilePath path cfg = do
-  rend <- use renderer
-  wLayer cfg
+wLayerFilePath :: Given StyleSheet => FilePath -> V2 Int -> RenderM (NamedWidget Op'Layer)
+wLayerFilePath path v = do
+  t <- loadTexture path
+  wLayer (#windowTexture @= t <: #size @= v <: emptyRecord)
+
 
 -- Delayed
 data Delay
@@ -89,7 +96,7 @@ type Op'Delay =
 
 -- | Delay widget, this widget has a looped counter
 --
--- == Methods
+-- Methods
 --
 -- * 'op'reset' Reset operator
 -- * 'op'run' Run operator, this increments the counter

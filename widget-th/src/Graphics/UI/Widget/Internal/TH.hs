@@ -52,10 +52,14 @@ declareOpDatatype opr = do
     ]
 
 declareOpGetter :: Operator -> DecsQ
-declareOpGetter opr = case opr^.branch of
-  ConT c | c == mkName "Self" -> declareOpSelfGetter opr
-  ConT c | c == mkName "Value" -> declareOpValueGetter opr
-  _ -> declareOpOtherGetter opr
+declareOpGetter opr = do
+  Just _Self <- lookupTypeName "Self"
+  Just _Value <- lookupTypeName "Value"
+  
+  case opr^.branch of
+    ConT c | c == _Self -> declareOpSelfGetter opr
+    ConT c | c == _Value -> declareOpValueGetter opr
+    _ -> declareOpOtherGetter opr
 
   where
     declareOpOtherGetter :: Operator -> DecsQ

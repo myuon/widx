@@ -4,21 +4,38 @@ Interfaces and classes for widget
 {-# LANGUAGE KindSignatures #-}
 signature Graphics.UI.Widget.Renderer where
 
-import Prelude (Functor, Monad, FilePath, Double)
+import Prelude (Functor, Applicative, Monad, FilePath, Double, Float, Num, Ord, String)
 import Control.Monad.IO.Class
-
-data RenderM :: * -> *
-
-instance Functor RenderM
-instance Monad RenderM
-instance MonadIO RenderM
-
-data Texture :: *
-
-loadTexture :: MonadIO m => FilePath -> m Texture
+import Data.Color
+import Linear.V2
 
 -- | Render objects
 class Renderer m where
   picture :: Texture -> m ()
   alpha :: Double -> m a -> m a
+  text :: String -> m a
+  colored :: Color Float -> m a -> m a
+  shaded :: Color Float -> m a -> m a
+  translate :: Num n => V2 n -> m a -> m a
+
+data RenderM :: * -> *
+
+instance Functor RenderM
+instance Applicative RenderM
+instance Monad RenderM
+instance MonadIO RenderM
+instance Renderer RenderM
+
+data Texture :: *
+
+loadTexture :: MonadIO m => FilePath -> m Texture
+
+data Keycode :: *
+
+instance Ord Keycode
+
+-- pattern synonym使いたい〜〜〜
+_KeycodeZ :: Keycode
+_KeyUp :: Keycode
+_KeyDown :: Keycode
 
