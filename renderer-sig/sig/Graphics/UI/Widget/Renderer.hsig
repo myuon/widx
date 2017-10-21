@@ -2,7 +2,24 @@
 Interfaces and classes for widget
 -}
 {-# LANGUAGE KindSignatures #-}
-signature Graphics.UI.Widget.Renderer where
+signature Graphics.UI.Widget.Renderer
+  (
+  -- * Renderer
+    Renderer(..)
+  , RenderM
+
+  -- * Texture
+  , Texture
+  , loadTexture
+
+  -- * Key
+  , Keycode
+
+  -- ** Keycode pattern
+  , _KeycodeZ
+  , _KeyUp
+  , _KeyDown
+  ) where
 
 import Prelude (Functor, Applicative, Monad, FilePath, Double, Float, Num, Ord, String)
 import Control.Monad.IO.Class
