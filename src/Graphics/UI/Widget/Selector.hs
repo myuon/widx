@@ -93,11 +93,6 @@ type instance Config "selector"
   = Record '[]
 
 {-
-    [ "labels" >: [String]
-    , "selectNum" >: Int
-    , "pager" >: Maybe Int
-    ]
-  
   def =
     #labels @= []
     <: #selectNum @= 1
