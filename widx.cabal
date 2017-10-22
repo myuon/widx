@@ -40,11 +40,12 @@ library
       Data.Scoped
       Data.Widget.Stylesheet
       Graphics.UI.Widget
+      Graphics.UI.Module.Layer
+      Graphics.UI.Module.Selector
       Graphics.UI.Widget.Core
       Graphics.UI.Widget.Util
 --      Graphics.UI.Widget.Internal.Freeze
 --      Graphics.UI.Widget.Internal.Named
-      Graphics.UI.Widget.Internal.Widget
 --      Graphics.UI.Widget.Layer
 --      Graphics.UI.Widget.Selector
   other-modules:

@@ -38,6 +38,7 @@ module Graphics.UI.Widget.Core
   , type (∈)
 --  , makeOp
 -}
+  , selfM
   , valueM
   
   , module Graphics.UI.Widget.Internal.Widget
@@ -59,6 +60,9 @@ import Graphics.UI.Widget.Internal.Widget
 --import Graphics.UI.Widget.Internal.TH
 --import Graphics.UI.Widget.Internal.Named
 --import Graphics.UI.Widget.Internal.Freeze
+
+selfM :: Monad m => m w -> m (Self w)
+selfM = fmap Identity
 
 valueM :: Monad m => m a -> m (Value a w)
 valueM = fmap Const
