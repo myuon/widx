@@ -19,30 +19,30 @@ module Graphics.UI.Widget.Core
   , Config
 
   -- * Common operators
+  , op'reset
   , op'render
   , op'renderAlpha
   , op'run
-  , op'reset
   , op'handleEvent
   , op'switch
 
   -- * Operator types
+  , Op'Reset(..)
   , Op'Render(..)
   , Op'Run(..)
-  , Op'Reset(..)
   , Op'HandleEvent(..)
   , Op'Switch(..)
   
   -- * Re-exports
   , type (++)
   , type (∈)
+  , makeOp
   , module Graphics.UI.Widget.Internal.Widget
-  , module Graphics.UI.Widget.Internal.TH
+--  , module Graphics.UI.Widget.Internal.TH
   , module Graphics.UI.Widget.Internal.Named
   , module Graphics.UI.Widget.Internal.Freeze
   ) where
 
-import qualified SDL as SDL
 import Control.Lens
 import qualified Data.Map as M
 import Data.Functor.Sum
@@ -51,21 +51,25 @@ import Data.Extensible
 import Data.Proxy
 import GHC.TypeLits
 import Data.Widget.Stylesheet
-import Graphics.UI.Widget.Class
+import Graphics.UI.Widget.Renderer
 import Graphics.UI.Widget.Internal.Widget
 import Graphics.UI.Widget.Internal.TH
 import Graphics.UI.Widget.Internal.Named
 import Graphics.UI.Widget.Internal.Freeze
 
 makeOp "Run" [t| _ Self RenderM () |]
-makeOp "HandleEvent" [t| M.Map SDL.Scancode Int -> _ Self RenderM () |]
+makeOp "HandleEvent" [t| M.Map Keycode Int -> _ Self RenderM () |]
 makeOp "Switch" [t| _ FreezeT Identity () |]
+
+data Op'Reset arg br m r where
+  Op'Reset :: arg -> Op'Reset arg Self Identity a
 
 data Op'Render br m r where
   Op'Render :: Double -> Op'Render Value RenderM ()
 
-data Op'Reset arg br m r where
-  Op'Reset :: arg -> Op'Reset arg Self Identity a
+-- | @op'reset = '_self'' . 'Op'Reset'@
+op'reset :: (Op'Reset arg ∈ xs) => arg -> Getter (Widget xs) (Widget xs)
+op'reset = _self' . Op'Reset
 
 op'renderAlpha :: (KnownName xs, Op'Render ∈ xs) => Double -> Getter (Widget xs) (RenderM ())
 op'renderAlpha d = to $ \w -> w ^. _value (Op'Render d)
@@ -73,10 +77,6 @@ op'renderAlpha d = to $ \w -> w ^. _value (Op'Render d)
 -- | @op'render = 'op'renderAlpha' 1.0@
 op'render :: (Given StyleSheet, KnownName xs, Op'Render ∈ xs) => Getter (Widget xs) (RenderM ())
 op'render = op'renderAlpha 1.0
-
--- | @op'reset = '_self'' . 'Op'Reset'@
-op'reset :: (Op'Reset arg ∈ xs) => arg -> Getter (Widget xs) (Widget xs)
-op'reset = _self' . Op'Reset
 
 -- | Recursive extension
 override :: (Widget old -> Widget new) -> Widget old -> (forall br m. Union new br m ~> (br (Widget new) m `Sum` Union old br m)) -> Widget new
@@ -98,5 +98,5 @@ runSwitchM w op k = runFreezeT (w `call` op) >>= k
 op'isFreeze :: Widget xs -> Getter (Widget xs) (FreezeT (Widget xs) Identity a) -> Bool 
 op'isFreeze w op = runSwitch w op isFreeze
 
-type family Config (k :: Symbol) (m :: * -> *) :: *
+type family Config (k :: Symbol) :: *
 

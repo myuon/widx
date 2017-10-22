@@ -28,20 +28,22 @@ module Graphics.UI.Widget.Selector
   , SelectorRenderConfig
   ) where
 
-import qualified SDL as SDL
 import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 import Data.Reflection
 import Data.Extensible
+import Data.Color.Names
 import Control.Lens hiding ((:>))
 import Control.Monad
 import Control.Monad.Trans
 import Linear.V2
 import Data.Scoped
 import Data.Widget.Stylesheet
+import Graphics.UI.Widget.Renderer
+import Graphics.UI.Widget.Util
 import Graphics.UI.Widget.Core
-import SDLight.Widgets.Layer
+import Graphics.UI.Widget.Layer
 
 data Selector
   = Selector
@@ -64,7 +66,7 @@ type SelectorRenderConfig = Record
   , "location" >: V2 Int
   ]
 
-makeOp "RenderSelector" [t| (SelectorRenderConfig -> GameM ()) -> _ Value GameM () |]
+makeOp "RenderSelector" [t| (SelectorRenderConfig -> RenderM ()) -> _ Value RenderM () |]
 makeOp "GetSelecting" [t| _ Value Identity [Int] |]
 makeOp "GetPointer" [t| _ Value Identity (Maybe Int) |]
 makeOp "GetLabels" [t| _ Value Identity [String] |]
@@ -87,39 +89,20 @@ type Op'Selector =
 -- とりあえずrenderDropDownの実装
 -- 必要があればoverrideする
 
-instance Conf "selector" where
-  type Required "selector" = '[]
-  type Optional "selector" =
-    [ "labels" >: [String]
-    , "selectNum" >: Int
-    , "pager" >: Maybe Int
-    ]
-  
+type instance Config "selector"
+  = Record '[]
+
+{-
   def =
     #labels @= []
     <: #selectNum @= 1
     <: #pager @= Nothing
     <: emptyRecord
-    
+-}
+
 -- | Selector widget
 --
--- == Config Parameter
--- === Required
---
--- @
--- []
--- @
---
--- === Optional
---
--- @
--- [ "labels" >: [String]  -- initial labels of this widget
--- , "selectNum" >: Int  -- How many items can I select?
--- , "pager" >: Maybe Int  -- Number of lines that single page can contain
--- ]
--- @
---
--- == Methods
+-- Methods
 --
 -- * 'op'reset' Reset operator
 -- * 'op'render' Render operator; dropdown style
@@ -132,23 +115,29 @@ instance Conf "selector" where
 -- * 'op'getLabels' Get the current labels
 -- * 'op'setLabels' Set labels
 --
-wSelector :: Given StyleSheet => WConfig "selector" -> NamedWidget Op'Selector
-wSelector (wconf #selector -> ViewWConfig wix _ opt) = wNamed (wix </> WId "selector") $ go $ new where
+wSelector :: Given StyleSheet => Config "selector" -> NamedWidget Op'Selector
+wSelector cfg = wNamed (mempty </> WId "selector") $ go $ new where
   pointerFromPagerStyle labels pager = maybe (rangeScope labels (length labels - 1)) (rangeScope labels) pager
+
+  def =
+    #labels @= []
+    <: #selectNum @= 1
+    <: #pager @= Nothing
+    <: emptyRecord
 
   new :: Selector
   new = Selector
-    (zip [0..] $ opt ^. #labels)
-    (pointerFromPagerStyle (opt ^. #labels) (opt ^. #pager))
-    (opt ^. #pager)
-    (opt ^. #selectNum)
+    (zip [0..] $ def ^. #labels)
+    (pointerFromPagerStyle (def ^. #labels) (def ^. #pager))
+    (def ^. #pager)
+    (def ^. #selectNum)
     []
     False
 
   go :: Selector -> Widget Op'Selector
   go sel = Widget $
     (\(Op'Reset _) -> continue $ go $ reset sel)
-    @> (\(Op'Render _) -> lift $ renderDropdown sel (getLocation wix))
+    @> (\(Op'Render _) -> lift $ renderDropdown sel 0) --(getLocation wix))
     @> (\(Op'RenderSelector rend) -> lift $ render sel rend)
     @> (\Op'Run -> continueM $ fmap go $ return sel)
     @> (\(Op'HandleEvent keys) -> continueM $ fmap go $ handler keys sel)
@@ -162,7 +151,7 @@ wSelector (wconf #selector -> ViewWConfig wix _ opt) = wNamed (wix </> WId "sele
   reset :: Selector -> Selector
   reset sel = sel & pointer._Just %~ adjustTo0 & selecting .~ [] & isFinished .~ False
 
-  render :: Selector -> (SelectorRenderConfig -> GameM ()) -> GameM ()
+  render :: Selector -> (SelectorRenderConfig -> RenderM ()) -> RenderM ()
   render sel rendItem = do
     forM_ (zip [0..] $ fmap ((sel^.labels) !!) $ maybe [0..length (sel^.labels)-1] rangeOf (sel^.pointer)) $ \(i,label) ->
       rendItem
@@ -170,27 +159,23 @@ wSelector (wconf #selector -> ViewWConfig wix _ opt) = wNamed (wix </> WId "sele
         <: #index @= i
         <: #isSelected @= (i `elem` (sel^.selecting))
         <: #isFocused @= (Just (fst label) == ((sel^.pointer) <&> (^.scoped)))
-        <: #location @= getLocation wix
+        <: #location @= 0 --getLocation wix
         <: emptyRecord
 
-  renderDropdown :: Selector -> V2 Int -> GameM ()
+  renderDropdown :: Selector -> V2 Int -> RenderM ()
   renderDropdown sel p = do
     render sel $ \rcfg -> do
       when (rcfg ^. #isFocused) $ do
-        renders white $
-          [ translate (p + V2 20 (20 + 30 * (rcfg ^. #index))) $ shaded black $ text "▶"
-          ]
+        translate (p + V2 20 (20 + 30 * (rcfg ^. #index))) $ shaded black $ colored white $ text "▶"
 
       let color = if rcfg ^. #isSelected then red else white
-      renders color $
-        [ translate (p + V2 (20+20) (20 + 30 * (rcfg ^. #index))) $ shaded black $ text $ rcfg ^. #label
-        ]
+      translate (p + V2 (20+20) (20 + 30 * (rcfg ^. #index))) $ shaded black $ colored color $ text $ rcfg ^. #label
 
-  handler :: M.Map SDL.Scancode Int -> Selector -> GameM Selector
+  handler :: M.Map Keycode Int -> Selector -> RenderM Selector
   handler keys sel
-    | keyjudge (keys M.! SDL.ScancodeUp) = return $ sel & pointer._Just %~ back
-    | keyjudge (keys M.! SDL.ScancodeDown) = return $ sel & pointer._Just %~ forward
-    | keys M.! SDL.ScancodeZ == 1 && not (sel^.isFinished) && (isJust $ sel^.pointer) = do
+    | keyjudge (keys M.! _KeyUp) = return $ sel & pointer._Just %~ back
+    | keyjudge (keys M.! _KeyDown) = return $ sel & pointer._Just %~ forward
+    | keys M.! _KeycodeZ == 1 && not (sel^.isFinished) && (isJust $ sel^.pointer) = do
         let p = fst $ (sel^.labels) !! (sel^.pointer^?!_Just^.scoped)
         if p `elem` sel^.selecting
           then return $ sel & selecting %~ delete p
@@ -215,45 +200,18 @@ type Op'SelectLayer =
   , Op'SetLabels
   ]
 
-type SelectLayer = (NamedWidget Op'Layer, Layer, NamedWidget Op'Selector)
+type SelectLayer = (NamedWidget Op'Layer, NamedWidget Op'Layer, NamedWidget Op'Selector)
 
-instance Conf "select_layer" where
-  type Required "select_layer" =
-    [ "windowTexture" >: SDL.Texture
-    , "cursorTexture" >: SDL.Texture
-    , "size" >: V2 Int
-    ]
+type instance Config "select_layer"
+  = Record
+  [ "windowTexture" >: Texture
+  , "cursorTexture" >: Texture
+  , "size" >: V2 Int
+  ]
 
-  type Optional "select_layer" =
-    [ "labels" >: [String]
-    , "selectNum" >: Int
-    , "pager" >: Maybe Int
-    ]
-    
-  def = def @"selector"
-  
 -- | Selector widget with window layer and cursor layer
 --
--- == Config Parameter
--- === Required
---
--- @
--- [ "windowTexture" >: SDL.Texture  -- Texture of window layer
--- , "cursorTexture" >: SDL.Texture  -- Texture of cursor layer
--- , "size" >: V2 Int  -- Size of this widget
--- ]
--- @
---
--- === Optional
---
--- @
--- [ "labels" >: [String]  -- initial labels of this widget
--- , "selectNum" >: Int  -- How many items can I select?
--- , "pager" >: Maybe Int  -- Number of lines that single page can contain
--- ]
--- @
---
--- == Methods
+-- Methods
 --
 -- * 'op'reset' Reset operator
 -- * 'op'render' Render operator; dropdown style
@@ -265,18 +223,24 @@ instance Conf "select_layer" where
 -- * 'op'getLabels' Get the current labels
 -- * 'op'setLabels' Set labels
 --
-wSelectLayer :: Given StyleSheet => WConfig "select_layer" -> GameM (Widget Op'SelectLayer)
-wSelectLayer (wconf #select_layer -> ViewWConfig wix req opt) = go <$> new where
-  new :: GameM SelectLayer
+wSelectLayer :: Given StyleSheet => Config "select_layer" -> RenderM (Widget Op'SelectLayer)
+wSelectLayer cfg = go <$> new where
+  def =
+    #labels @= []
+    <: #selectNum @= 1
+    <: #pager @= Nothing
+    <: emptyRecord
+  
+  new :: RenderM SelectLayer
   new = liftM3 (,,)
-    (wLayer (conf @"layer" wix (shrinkAssoc req) (def @"layer")))
-    (newLayer (req ^. #cursorTexture) (V2 (req ^. #size ^. _x - 20) 30))
-    (return $ wSelector $ conf @"selector" wix emptyRecord opt)
+    (wLayer (#windowTexture @= cfg ^. #windowTexture <: #size @= cfg ^. #size <: emptyRecord))
+    (wLayer (#windowTexture @= cfg ^. #cursorTexture <: #size @= V2 (cfg ^. #size ^. _x - 20) 30 <: emptyRecord))
+    (return $ wSelector emptyRecord)
 
   go :: SelectLayer -> Widget Op'SelectLayer
   go w = Widget $
     (\(Op'Reset args) -> continue $ go $ w & _3 ^%~ op'reset args)
-    @> (\(Op'Render _) -> lift $ render (getLocation wix) w)
+    @> (\(Op'Render _) -> lift $ render 0 w) -- render (getLocation wix) w)
     @> (\Op'Run -> continue $ go w)
     @> (\(Op'HandleEvent keys) -> continueM $ fmap go $ (\x -> w & _3 .~ x) <$> (w^._3^.op'handleEvent keys))
     @> (\Op'Switch -> (if op'isFreeze (w^._3) op'switch then freeze' else continue) $ go w)
@@ -286,14 +250,13 @@ wSelectLayer (wconf #select_layer -> ViewWConfig wix req opt) = go <$> new where
     @> (\(Op'SetLabels t pager) -> continue $ go $ w & _3 ^%~ op'setLabels t pager)
     @> emptyUnion
 
-  render :: V2 Int -> SelectLayer -> GameM ()
+  render :: V2 Int -> SelectLayer -> RenderM ()
   render v sel = do
     sel^._1^.op'render
     (sel^._3^.) $ op'renderSelector $ \rcfg -> do
       when (rcfg ^. #isFocused) $ do
-        sel^._2^.op'renderLayer ((rcfg ^. #location) + V2 0 (30 * (rcfg ^. #index))) 1.0
+        sel^._2^.op'renderAt ((rcfg ^. #location) + V2 0 (30 * (rcfg ^. #index))) 1.0
 
       let color = if rcfg ^. #isSelected then red else white
-      renders color $
-        [ translate ((rcfg ^. #location) + V2 10 (30 * (rcfg ^. #index))) $ shaded black $ text $ rcfg ^. #label
-        ]
+      translate ((rcfg ^. #location) + V2 10 (30 * (rcfg ^. #index))) $ shaded black $ colored color $ text $ rcfg ^. #label
+      
