@@ -15,61 +15,27 @@ import Data.Extensible
 -- | Polymorphic function type
 type (~>) f g = forall x. f x -> g x
 
--- | Operator type
-newtype Op br m r (op :: (* -> (* -> *) -> * -> *) -> (* -> *) -> * -> *) = Op { runOp :: op br m r }
-
--- | @Union ops br m v@ represents operator list of @ops@ with each operator has type of @'Op' br m v@
-newtype Union ops br m v = Union { getUnion :: Op br m v :| ops }
+-- | Module of widget
+newtype Module op = Module { runModule :: forall m val. op m val -> m (val (Module op)) }
 
 -- | Widget Type
-newtype Widget ops = Widget { runWidget :: forall br m. (Functor m, TransBifunctor br m) => Union ops br m ~> br (Widget ops) m }
-
--- |
--- @f@ is like a bifunctor with base monad @m@
-class TransBifunctor f (m :: * -> *) where
-  bimapT :: (a -> b) -> (c -> d) -> f a m c -> f b m d
-
-  firstT :: (a -> b) -> f a m c -> f b m c
-  firstT f = bimapT f id
-
-  secondT :: (c -> d) -> f a m c -> f a m d
-  secondT g = bimapT id g
+newtype Widget ops = Widget { runWidget :: Module :* ops }
 
 -- | Call a method of a widget
-call :: (k ∈ xs, TransBifunctor br m, Functor m) => Widget xs -> (k br m ~> br (Widget xs) m)
-call w = runWidget w . Union . embed . Op
+call :: (k ∈ xs, Functor m, Functor val) => Widget xs -> k m val -> m (val (Widget xs))
+call w op = fmap (\t -> Widget $ runWidget w & piece .~ t) <$> runModule (runWidget w ^. piece) op
 
 -- | Turn a operator into Getter
-_Op :: (k ∈ xs, TransBifunctor br m, Functor m) => k br m a -> Getter (Widget xs) (br (Widget xs) m a)
+_Op :: (k ∈ xs, Functor m, Functor val) => k m val -> Getter (Widget xs) (m (val (Widget xs)))
 _Op opr = to (\w -> call w opr)
 
-infixr 2 @>
+-- | Represents that operator will return the widget itself
+type Self = Identity
 
--- | Cons operator of Union type
-(@>) :: (t br m ~> r) -> (Union ts br m ~> r) -> (Union (t : ts) br m ~> r)
-(@>) f g = ((f . runOp) <:| (g . Union)) . getUnion
+-- | Represents that operator will return a value discarding the widget
+type Value = Const
 
--- | Exhausts empty union
-emptyUnion :: Union '[] br m v -> a
-emptyUnion = \case
-
---
-
--- | Represents that an operator returns @w@, usually widget itself
-newtype Self w m a = Self { runSelf :: m w }
-
--- | Represents that an operator returns @a@, usually a value
-newtype Value w m a = Value { getValue :: m a }
-
-instance MonadTrans (Value w) where
-  lift = Value
-
-instance Functor m => TransBifunctor Self m where
-  bimapT f _ = Self . fmap f . runSelf
-
-instance Functor m => TransBifunctor Value m where
-  bimapT _ g = Value . fmap g . getValue
-
+{-
 -- | @br@ can continue with the current widget state
 class NodeW br where
   continue :: Monad m => Widget xs -> br (Widget xs) m a
@@ -103,5 +69,5 @@ _self' opr = _self opr . to runIdentity
 -- | '_value'' with Identity monad
 _value' :: (k ∈ xs, LeafW br) => k br Identity a -> Getter (Widget xs) a
 _value' opr = _value opr . to runIdentity
-
+-}
 

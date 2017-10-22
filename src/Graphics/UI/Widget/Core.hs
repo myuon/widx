@@ -7,16 +7,16 @@ Core of 'Widget'
 -}
 module Graphics.UI.Widget.Core
   (
+  -- * Config
+  Config
 
+{-
   -- * Widget functions
     override
 
   , runSwitch
   , runSwitchM
   , op'isFreeze
-
-  -- * Config
-  , Config
 
   -- * Common operators
   , op'reset
@@ -36,11 +36,14 @@ module Graphics.UI.Widget.Core
   -- * Re-exports
   , type (++)
   , type (∈)
-  , makeOp
+--  , makeOp
+-}
+  , valueM
+  
   , module Graphics.UI.Widget.Internal.Widget
 --  , module Graphics.UI.Widget.Internal.TH
-  , module Graphics.UI.Widget.Internal.Named
-  , module Graphics.UI.Widget.Internal.Freeze
+--  , module Graphics.UI.Widget.Internal.Named
+--  , module Graphics.UI.Widget.Internal.Freeze
   ) where
 
 import Control.Lens
@@ -53,10 +56,14 @@ import GHC.TypeLits
 import Data.Widget.Stylesheet
 import Graphics.UI.Widget.Renderer
 import Graphics.UI.Widget.Internal.Widget
-import Graphics.UI.Widget.Internal.TH
-import Graphics.UI.Widget.Internal.Named
-import Graphics.UI.Widget.Internal.Freeze
+--import Graphics.UI.Widget.Internal.TH
+--import Graphics.UI.Widget.Internal.Named
+--import Graphics.UI.Widget.Internal.Freeze
 
+valueM :: Monad m => m a -> m (Value a w)
+valueM = fmap Const
+
+{-
 makeOp "Run" [t| _ Self RenderM () |]
 makeOp "HandleEvent" [t| M.Map Keycode Int -> _ Self RenderM () |]
 makeOp "Switch" [t| _ FreezeT Identity () |]
@@ -97,6 +104,8 @@ runSwitchM w op k = runFreezeT (w `call` op) >>= k
 -- | Is a widget frozen?
 op'isFreeze :: Widget xs -> Getter (Widget xs) (FreezeT (Widget xs) Identity a) -> Bool 
 op'isFreeze w op = runSwitch w op isFreeze
+
+-}
 
 type family Config (k :: Symbol) :: *
 

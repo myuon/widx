@@ -1,21 +1,14 @@
 {-|
-A widget with layer
+Layer module
 -}
-module Graphics.UI.Widget.Layer
+module Graphics.UI.Module.Layer
   (
   -- * Widget
-    wLayer
-  , wDelay
+    mLayer
 
   -- * Method
   , Op'Layer
-  , Op'Delay
 
-  -- * Operator
-  , op'getCounter
-  , op'renderAt
-
-  , Op'RenderAt(..)
   ) where
 
 import qualified Data.Map as M
@@ -38,13 +31,9 @@ data Layer
 
 makeLenses ''Layer
 
-makeOp "RenderAt" [t| V2 Int -> Double -> _ Value RenderM () |]
-
 -- | Method of 'wLayer'
-type Op'Layer =
-  [ Op'Render
-  , Op'RenderAt
-  ]
+data Op'Layer m val where
+  Op'Render :: V2 Int -> Double -> Op'Layer RenderM (Value ())
 
 type instance Config "layer"
   = Record
@@ -58,7 +47,15 @@ type instance Config "layer"
 --
 -- * 'op'render' Render operator
 --
-wLayer :: Given StyleSheet => Config "layer" -> RenderM (NamedWidget Op'Layer)
+mLayer :: Config "layer" -> RenderM (Module Op'Layer)
+mLayer cfg = go <$> new where
+  new = return $ Layer (cfg ^. #size) (cfg ^. #windowTexture)
+  
+  go :: Layer -> Module Op'Layer
+  go layer = Module $ \op -> case op of
+    Op'Render v a -> valueM $ alpha a $ translate v $ picture $ layer^.texture
+
+{-
 wLayer cfg = wNamed mempty . go <$> new where
   new = return $ Layer (cfg ^. #size) (cfg ^. #windowTexture)
 
@@ -112,3 +109,5 @@ wDelay = \n -> go (Delay 0 n) where
     @> emptyUnion
 
   run delay = return $ delay & counter %~ (`mod` delay^.delayCount) . (+1)
+-}
+
