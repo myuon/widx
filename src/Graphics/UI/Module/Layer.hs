@@ -7,7 +7,7 @@ module Graphics.UI.Module.Layer
     mLayer
 
   -- * Method
-  , Op'Layer
+  , Op'Layer(..)
 
   ) where
 

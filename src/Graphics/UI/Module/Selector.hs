@@ -7,7 +7,7 @@ module Graphics.UI.Module.Selector
     mSelector
 
   -- * Method
-  , Op'Selector
+  , Op'Selector(..)
 
   -- * Config
   , SelectorRenderConfig
@@ -44,6 +44,7 @@ type SelectorRenderConfig = Record
 
 -- | Method of 'mSelector'
 data Op'Selector m val where
+  Render :: (SelectorRenderConfig -> RenderM ()) -> Op'Selector RenderM (Value ())
   RenderDropdown :: V2 Int -> Op'Selector RenderM (Value ())
   GetSelecting :: Op'Selector Identity (Value [Int])
   GetPointer :: Op'Selector Identity (Value (Maybe Int))
@@ -61,6 +62,7 @@ type instance Config "selector" =
 --
 -- Methods
 --
+-- * 'op'render' Render a selector by given custom renderer
 -- * 'op'renderDropdown' Render a selector as dropdown style
 -- * 'op'getSelecting' Get selecting indices as integer list
 -- * 'op'getPointer' Get the current pointer index
@@ -99,23 +101,10 @@ mSelector cfg = go new where
 
   go :: Selector -> Module Op'Selector
   go model = Module $ \case
+    Render renderer -> valueM $ render model renderer
     RenderDropdown v -> valueM $ renderDropdown model v
     GetSelecting -> valueM $ Identity (model ^. selecting)
     GetPointer -> valueM $ Identity $ (model^.pointer) <&> (^.scoped)
     GetLabels -> valueM $ Identity (fmap snd $ model ^. labels)
     SetLabels lbls pager -> selfM $ Identity $ go $ model & labels .~ zip [0..] lbls & pointer .~ pointerFromPagerStyle lbls pager & pagerStyle .~ pager
-
-{-
-    (\(Op'Reset _) -> continue $ go $ reset sel)
-    @> (\(Op'Render _) -> lift $ renderDropdown sel (getLocation wix))
-    @> (\(Op'RenderSelector rend) -> lift $ render sel rend)
-    @> (\Op'Run -> continueM $ fmap go $ return sel)
-    @> (\(Op'HandleEvent keys) -> continueM $ fmap go $ handler keys sel)
-    @> (\Op'Switch -> (if sel^.isFinished then freeze' else continue) $ go sel)
-    @> (\Op'GetSelecting -> finish $ sel^.selecting)
-    @> (\Op'GetPointer -> finish $ sel^.pointer <&> (^.scoped))
-    @> (\Op'GetLabels -> finish $ fmap snd $ sel^.labels)
-    @> (\(Op'SetLabels ls pager) -> continue $ go $ sel & labels .~ zip [0..] ls & pointer .~ pointerFromPagerStyle ls pager & pagerStyle .~ pager)
-    @> emptyUnion
--}
 
