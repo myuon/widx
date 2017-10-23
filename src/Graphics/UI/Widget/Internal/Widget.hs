@@ -25,9 +25,14 @@ newtype Widget ops = Widget { runWidget :: Module :* ops }
 call :: (k ∈ xs, Functor m, Functor val) => Widget xs -> k m val -> m (val (Widget xs))
 call w op = fmap (\t -> Widget $ runWidget w & piece .~ t) <$> runModule (runWidget w ^. piece) op
 
+callAt :: (Functor m, Functor val) => Widget xs -> (Membership xs k, k m val) -> m (val (Widget xs))
+callAt w (mem, op) = fmap (\t -> Widget $ runWidget w & pieceAt mem .~ t) <$> runModule (runWidget w ^. pieceAt mem) op
+
 -- | Turn a operator into Getter
 _Op :: (k ∈ xs, Functor m, Functor val) => k m val -> Getter (Widget xs) (m (val (Widget xs)))
 _Op opr = to (\w -> call w opr)
+
+_OpAt mem op = to (\w -> callAt w (mem,op))
 
 -- | Represents that operator will return the widget itself
 type Self = Identity

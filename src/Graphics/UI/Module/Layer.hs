@@ -33,7 +33,7 @@ makeLenses ''Layer
 
 -- | Method of 'mLayer'
 data Op'Layer m val where
-  Op'Render :: V2 Int -> Double -> Op'Layer RenderM (Value ())
+  Render :: V2 Int -> Double -> Op'Layer RenderM (Value ())
 
 type instance Config "layer"
   = Record
@@ -53,5 +53,5 @@ mLayer cfg = go <$> new where
   
   go :: Layer -> Module Op'Layer
   go layer = Module $ \op -> case op of
-    Op'Render v a -> valueM $ alpha a $ translate v $ picture $ layer^.texture
+    Render v a -> valueM $ alpha a $ translate v $ picture $ layer^.texture
 

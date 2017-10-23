@@ -44,8 +44,8 @@ type SelectorRenderConfig = Record
 
 -- | Method of 'mSelector'
 data Op'Selector m val where
-  Render :: (SelectorRenderConfig -> RenderM ()) -> Op'Selector RenderM (Value ())
-  RenderDropdown :: V2 Int -> Op'Selector RenderM (Value ())
+  RenderSelector :: (SelectorRenderConfig -> RenderM ()) -> Op'Selector RenderM (Value ())
+  Render :: V2 Int -> Op'Selector RenderM (Value ())
   GetSelecting :: Op'Selector Identity (Value [Int])
   GetPointer :: Op'Selector Identity (Value (Maybe Int))
   GetLabels :: Op'Selector Identity (Value [String])
@@ -101,8 +101,8 @@ mSelector cfg = go new where
 
   go :: Selector -> Module Op'Selector
   go model = Module $ \case
-    Render renderer -> valueM $ render model renderer
-    RenderDropdown v -> valueM $ renderDropdown model v
+    RenderSelector renderer -> valueM $ render model renderer
+    Render v -> valueM $ renderDropdown model v
     GetSelecting -> valueM $ Identity (model ^. selecting)
     GetPointer -> valueM $ Identity $ (model^.pointer) <&> (^.scoped)
     GetLabels -> valueM $ Identity (fmap snd $ model ^. labels)

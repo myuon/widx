@@ -42,12 +42,9 @@ library
       Graphics.UI.Widget
       Graphics.UI.Module.Layer
       Graphics.UI.Module.Selector
+      Graphics.UI.Widget.SelectLayer
       Graphics.UI.Widget.Core
       Graphics.UI.Widget.Util
---      Graphics.UI.Widget.Internal.Freeze
---      Graphics.UI.Widget.Internal.Named
---      Graphics.UI.Widget.Layer
---      Graphics.UI.Widget.Selector
   other-modules:
       Paths_widx
   default-language: Haskell2010

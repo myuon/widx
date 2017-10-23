@@ -40,6 +40,8 @@ module Graphics.UI.Widget.Core
 -}
   , selfM
   , valueM
+  , valued
+  , Op'Render(..)
   
   , module Graphics.UI.Widget.Internal.Widget
 --  , module Graphics.UI.Widget.Internal.TH
@@ -54,6 +56,7 @@ import Data.Reflection
 import Data.Extensible
 import Data.Proxy
 import GHC.TypeLits
+import Linear.V2
 import Data.Widget.Stylesheet
 import Graphics.UI.Widget.Renderer
 import Graphics.UI.Widget.Internal.Widget
@@ -66,6 +69,12 @@ selfM = fmap Identity
 
 valueM :: Monad m => m a -> m (Value a w)
 valueM = fmap Const
+
+valued :: Value a w -> Value a z
+valued v = Const $ getConst v
+
+data Op'Render m val where
+  Op'Render :: V2 Int -> Double -> Op'Render RenderM (Value ())
 
 {-
 makeOp "Run" [t| _ Self RenderM () |]

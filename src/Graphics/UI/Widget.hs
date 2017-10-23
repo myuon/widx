@@ -3,13 +3,8 @@ module Graphics.UI.Widget
   -- * Core
     module Graphics.UI.Widget.Core
 
-  -- * Module
-  , module Graphics.UI.Module.Layer
-  , module Graphics.UI.Module.Selector
-
   -- * Widget
---  , module Graphics.UI.Widget.Layer
---  , module Graphics.UI.Widget.Selector
+  , module Graphics.UI.Widget.SelectLayer
 
   -- * Signatures
   , module Graphics.UI.Widget.Renderer
@@ -18,10 +13,7 @@ module Graphics.UI.Widget
 import Graphics.UI.Widget.Core
 
 --import Graphics.UI.Widget.Layer
---import Graphics.UI.Widget.Selector
-
-import Graphics.UI.Module.Layer
-import Graphics.UI.Module.Selector
+import Graphics.UI.Widget.SelectLayer
 
 import Graphics.UI.Widget.Renderer
 
