@@ -17,13 +17,13 @@ cabal-version:  >= 2
 extra-source-files:
     README.md
 
-library widget-th
-  exposed-modules:     Graphics.UI.Widget.Internal.TH
-  build-depends:       base >=4.10 && <4.11
-                     , lens
-                     , template-haskell
-  hs-source-dirs:      widget-th/src
-  default-language:    Haskell2010
+--library widget-th
+--  exposed-modules:     Graphics.UI.Widget.Internal.TH
+--  build-depends:       base >=4.10 && <4.11
+--                     , lens
+--                     , template-haskell
+--  hs-source-dirs:      widget-th/src
+--  default-language:    Haskell2010
 
 library
   hs-source-dirs:
@@ -41,7 +41,7 @@ library
     , trifecta
     , linear
     , colors
-    , widget-th
+--    , widget-th
   signatures: Graphics.UI.Widget.Renderer
   exposed-modules:
       Data.Scoped
