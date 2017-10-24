@@ -35,11 +35,33 @@ _Op opr = _OpAt membership opr
 _OpAt :: (Functor m, Functor val) => Membership xs k -> k m val -> Getter (Widget xs) (m (val (Widget xs)))
 _OpAt mem op = to (\w -> callAt w mem op)
 
+type family MapFst xs where
+  MapFst '[] = '[]
+  MapFst ((k >: v) : xs) = k : MapFst xs
+
+type family MapSnd xs where
+  MapSnd '[] = '[]
+  MapSnd ((k >: v) : xs) = v : MapSnd xs
+
+data Widx ops
+  = Widx
+  { _keys :: Proxy :* (MapFst ops)
+  , _widget :: Widget (MapSnd ops) 
+  }
+
+makeLenses ''Widx
+
+mkWidx :: (Generate (MapFst ops)) => Widget (MapSnd ops) -> Widx ops
+mkWidx = Widx (hrepeat Proxy)
+
 keyOf :: proxy1 xs -> proxy2 x -> Membership xs x -> Membership ys y
 keyOf _ _ = unsafeCoerce
 
-_key :: (x ∈ xs, Functor m, Functor val) => Proxy x -> y m val -> Getter (Widget ys, Proxy :* xs) (m (val (Widget ys)))
-_key px op = to $ \(w,keys) -> callAt w (keyOf keys px membership) op
+_keyPair :: (x ∈ xs, Functor m, Functor val) => Proxy x -> y m val -> Getter (Widget ys, Proxy :* xs) (m (val (Widget ys)))
+_keyPair px op = to $ \(w,keys) -> callAt w (keyOf keys px membership) op
+
+_key :: (x ∈ MapFst ops, Functor m, Functor val) => Proxy x -> y m val -> Getter (Widx ops) (m (val (Widx ops)))
+_key px op = to $ \widx -> fmap (\t -> widx & widget .~ t) <$> (widx^.widget, widx^.keys) ^. _keyPair px op
 
 -- | Represents that operator will return the widget itself
 type Self = Identity

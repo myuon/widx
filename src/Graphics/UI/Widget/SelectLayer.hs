@@ -31,11 +31,8 @@ type instance Config "select_layer"
   , "pager" >: Maybe Int
   ]
 
-data SelectLayer
-  = SelectLayer
-  { getSelectLayer :: Widget [Op'Layer, Op'Layer, Op'Selector]
-  , keys :: Proxy :* ["window", "cursor", "selector"]
-  }
+newtype SelectLayer = SelectLayer {
+  getSelectLayer :: Widx ["window" >: Op'Layer, "cursor" >: Op'Layer, "selector" >: Op'Selector] }
 
 wSelectLayer :: Config "select_layer" -> RenderM SelectLayer
 wSelectLayer cfg = do
@@ -43,19 +40,17 @@ wSelectLayer cfg = do
   mcur <- mLayer $ #windowTexture @= (cfg ^. #cursorTexture) <: #size @= (V2 (cfg ^. #size ^. _x - 20) 30) <: emptyRecord
   let msel = mSelector (shrink cfg)
 
-  return $ SelectLayer
-    (Widget $ mwin <: mcur <: msel <: nil)
-    (hrepeat Proxy)
+  return $ SelectLayer $ mkWidx (Widget $ mwin <: mcur <: msel <: nil)
 
 op'render :: V2 Int -> Getter SelectLayer (RenderM (Value () SelectLayer))
-op'render v = to $ \(SelectLayer w keys) -> fmap (\w -> SelectLayer w keys) <$> do
-  (w,keys) ^. _key #window (Layer.Render v 1.0)
+op'render v = to $ \(SelectLayer w) -> valued <$> do
+  w ^. _key #window (Layer.Render v 1.0)
   let renderer rcfg = do
         when (rcfg ^. #isFocused) $ do
-          (w,keys) ^. _key #cursor (Layer.Render (V2 0 (30 * (rcfg ^. #index))) 1.0)
+          w ^. _key #cursor (Layer.Render (V2 0 (30 * (rcfg ^. #index))) 1.0)
           return ()
   
         let color = if rcfg ^. #isSelected then red else white
         translate (V2 10 (30 * (rcfg ^. #index))) $ shaded black $ colored color $ text $ rcfg ^. #label
-  (w,keys) ^. _key #selector (Selector.RenderSelector renderer)
+  w ^. _key #selector (Selector.RenderSelector renderer)
 
