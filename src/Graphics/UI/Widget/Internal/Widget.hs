@@ -1,8 +1,7 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-|
 Definition of Widget
 -}
@@ -11,12 +10,13 @@ module Graphics.UI.Widget.Internal.Widget where
 import Control.Lens
 import Control.Monad.Trans
 import Data.Extensible
-
--- | Polymorphic function type
-type (~>) f g = forall x. f x -> g x
+import Data.Extensible.Internal
+import Data.Proxy
+import GHC.OverloadedLabels
+import Unsafe.Coerce
 
 -- | Module of widget
-newtype Module op = Module { runModule :: forall m val. op m val -> m (val (Module op)) }
+newtype Module op = Module { runModule :: forall (m :: * -> *) (val :: * -> *). (Functor m, Functor val) => op m val -> m (val (Module op)) }
 
 -- | Widget Type
 newtype Widget ops = Widget { runWidget :: Module :* ops }
@@ -25,54 +25,25 @@ newtype Widget ops = Widget { runWidget :: Module :* ops }
 call :: (k ∈ xs, Functor m, Functor val) => Widget xs -> k m val -> m (val (Widget xs))
 call w op = fmap (\t -> Widget $ runWidget w & piece .~ t) <$> runModule (runWidget w ^. piece) op
 
-callAt :: (Functor m, Functor val) => Widget xs -> (Membership xs k, k m val) -> m (val (Widget xs))
-callAt w (mem, op) = fmap (\t -> Widget $ runWidget w & pieceAt mem .~ t) <$> runModule (runWidget w ^. pieceAt mem) op
+callAt :: (Functor m, Functor val) => Widget xs -> Membership xs k -> k m val -> m (val (Widget xs))
+callAt w mem op = fmap (\t -> Widget $ runWidget w & pieceAt mem .~ t) <$> runModule (runWidget w ^. pieceAt mem) op
 
 -- | Turn a operator into Getter
 _Op :: (k ∈ xs, Functor m, Functor val) => k m val -> Getter (Widget xs) (m (val (Widget xs)))
-_Op opr = to (\w -> call w opr)
+_Op opr = _OpAt membership opr
 
-_OpAt mem op = to (\w -> callAt w (mem,op))
+_OpAt :: (Functor m, Functor val) => Membership xs k -> k m val -> Getter (Widget xs) (m (val (Widget xs)))
+_OpAt mem op = to (\w -> callAt w mem op)
+
+keyOf :: proxy1 xs -> proxy2 x -> Membership xs x -> Membership ys y
+keyOf _ _ = unsafeCoerce
+
+_key :: (x ∈ xs, Functor m, Functor val) => Proxy x -> y m val -> Getter (Widget ys, Proxy :* xs) (m (val (Widget ys)))
+_key px op = to $ \(w,keys) -> callAt w (keyOf keys px membership) op
 
 -- | Represents that operator will return the widget itself
 type Self = Identity
 
 -- | Represents that operator will return a value discarding the widget
 type Value = Const
-
-{-
--- | @br@ can continue with the current widget state
-class NodeW br where
-  continue :: Monad m => Widget xs -> br (Widget xs) m a
-  continueM :: Functor m => m (Widget xs) -> br (Widget xs) m a
-
-  _self :: (k ∈ xs, TransBifunctor br m, Functor m) => k br m () -> Getter (Widget xs) (m (Widget xs))
-
--- | @br@ can finish with given value
-class LeafW br where
-  finish :: Monad m => model -> br (Widget xs) m model
-  finishM :: Functor m => m model -> br (Widget xs) m model
-
-  _value :: (k ∈ xs, Functor m) => k br m a -> Getter (Widget xs) (m a)
-
-instance NodeW Self where
-  continue = Self . return
-  continueM = Self
-
-  _self opr = to $ \w -> runSelf $ w `call` opr
-
-instance LeafW Value where
-  finish = Value . return
-  finishM = Value
-
-  _value opr = to $ \w -> getValue $ w `call` opr
-
--- | '_self' with Identity monad
-_self' :: (k ∈ xs, TransBifunctor br Identity, NodeW br) => k br Identity () -> Getter (Widget xs) (Widget xs)
-_self' opr = _self opr . to runIdentity
-
--- | '_value'' with Identity monad
-_value' :: (k ∈ xs, LeafW br) => k br Identity a -> Getter (Widget xs) a
-_value' opr = _value opr . to runIdentity
--}
 
